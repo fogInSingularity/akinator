@@ -1,5 +1,7 @@
+CC = g++
+
 INCLUDE = -I./libcode/include -I./treecode/include -I./akinatorcode/include
-SOURCES = libcode/source/* treecode/source/* akinatorcode/source/*
+SOURCES = libcode/source/* treecode/source/* akinatorcode/source/* stack/source/*
 
 EXE = akinator
 EXE_RELEASE = akinator_rel
@@ -26,7 +28,22 @@ object-size,return,returns-nonnull-attribute,shift,signed-integer-overflow,$\
 undefined,unreachable,vla-bound,vptr
 
 all:
-	@g++ main.cpp $(SOURCES) $(FLAGS) -o $(EXE)
+	@$(CC) main.cpp $(SOURCES) $(FLAGS) -o $(EXE)
+
+# clang:
+# 	@clang main.cpp $(SOURCES) -Wall -Wextra -o $(EXE)
 
 release:
-	@g++ main.cpp $(SOURCES) -O3 -march=native -std=c++23 -o $(EXE_RELEASE)
+	@$(CC) main.cpp $(SOURCES) -O3 -march=native -std=c++23 -o $(EXE_RELEASE)
+
+analyze:
+	@clang-tidy $(SOURCES) -checks=clang-analyzer-*
+
+performance:
+	@clang-tidy $(SOURCES) -checks=performance-*
+
+portability:
+	@clang-tidy $(SOURCES) -checks=portability-*
+
+readablility:
+	@clang-tidy $(SOURCES) -checks=readability-*

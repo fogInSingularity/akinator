@@ -8,6 +8,7 @@
 #include "../../treecode/include/b_tree.h"
 #include "../../libcode/include/debug.h"
 #include "../../libcode/include/my_string.h"
+#include "../../stack/include/stack.h"
 
 enum class Mode {
   kGuess           = 0,
@@ -24,6 +25,8 @@ enum class AkinatorError {
   kCantOpenFile    = 2,
   kCantAllocDB     = 3,
   kInvalidDataBase = 4,
+  kStackError      = 5,
+  kStringError     = 6,
 };
 
 struct Akinator {

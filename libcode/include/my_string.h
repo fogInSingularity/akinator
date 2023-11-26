@@ -29,9 +29,29 @@ enum class StringError {
   kCantAlloc = 2,
 };
 
+struct StringView {
+ public:
+  void Ctor(const wchar_t* origin);
+  void Ctor(const wchar_t* origin, size_t len);
+  void Dtor();
+
+  bool IsEmpty();
+  size_t Size();
+  size_t Length();
+
+  const wchar_t* At(Index ind);
+  const wchar_t* Data();
+ private:
+  const wchar_t* data_;
+  size_t size_;
+};
+
 struct String {
  public:
   StringError Ctor(const wchar_t* origin = L"",
+                   const size_t min_alloc = kStrMinAlloc);
+  StringError Ctor(const size_t len,
+                   const wchar_t* origin = L"",
                    const size_t min_alloc = kStrMinAlloc);
   void Dtor();
 
@@ -51,11 +71,13 @@ struct String {
 
   StringError Append(String* add_str);
   StringError Append(const wchar_t* add_str);
+  StringError Append(StringView* add_str);
   //TODO add other Append overloads
   StringError PushBack(wchar_t ch);
   wchar_t PopBack();
   StringError Assign(String* str);
   StringError Assign(const wchar_t* str);
+  StringError Assign(StringView* str);
   //TODO add other Assign overloads
   //TODO Insert
   //TODO Erase
@@ -66,23 +88,6 @@ struct String {
   size_t cap_;
 
   StringError Append(size_t add_size, const wchar_t* add_str);
-};
-
-struct StringView {
- public:
-  void Ctor(const wchar_t* origin);
-  void Ctor(const wchar_t* origin, size_t len);
-  void Dtor();
-
-  bool IsEmpty();
-  size_t Size();
-  size_t Length();
-
-  const wchar_t* At(Index ind);
-  const wchar_t* Data();
- private:
-  const wchar_t* data_;
-  size_t size_;
 };
 
 #endif // LIB_MYSTRING_H_

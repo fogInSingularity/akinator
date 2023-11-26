@@ -7,7 +7,7 @@ void SwapBytes(void* a, void* b, size_t size) {
   if (a == b) { return; } //REVIEW
 
   size_t nFullOps = size >> 3; // колво шагов по 8
-  size_t trailer = size & 0b111; // оставшиеся 7 байт
+  size_t trailer = size & 0b111UL; // оставшиеся 7 байт
 
   uint8_t* aMove = (uint8_t*)a;
   uint8_t* bMove = (uint8_t*)b;
@@ -20,7 +20,7 @@ void SwapBytes(void* a, void* b, size_t size) {
     bMove += sizeof(uint64_t);
   }
 
-  if (trailer & 0b100) {
+  if (trailer & 0b100UL) {
     uint32_t temp = 0;
     memcpy(&temp, aMove, sizeof(uint32_t));
            memcpy(aMove, bMove, sizeof(uint32_t));
@@ -28,7 +28,7 @@ void SwapBytes(void* a, void* b, size_t size) {
     aMove += sizeof(uint32_t);
     bMove += sizeof(uint32_t);
   }
-  if (trailer & 0b010) {
+  if (trailer & 0b010UL) {
       uint16_t temp = 0;
       memcpy(&temp, aMove, sizeof(uint16_t));
              memcpy(aMove, bMove, sizeof(uint16_t));
@@ -36,7 +36,7 @@ void SwapBytes(void* a, void* b, size_t size) {
       aMove += sizeof(uint16_t);
       bMove += sizeof(uint16_t);
   }
-  if (trailer & 0b001) {
+  if (trailer & 0b001UL) {
       uint8_t temp = 0;
       memcpy(&temp, aMove, sizeof(uint8_t));
              memcpy(aMove, bMove, sizeof(uint8_t));

@@ -3,22 +3,18 @@
 
 #include <stdio.h>
 #include <wchar.h>
+#include <stdlib.h>
 
 #include "lib_config.h"
 
 #include "color.h"
 
 #ifdef ASSERT_ON
-#define ASSERT(expr)                                                           \
-  if ((expr) == 0) {                                                           \
-    fwprintf(stderr, BOLD RED L"#  ERROR:\n");                                 \
-    fwprintf(stderr,          L"#    %s\n", #expr);                            \
-    fwprintf(stderr,          L"#    file: %s\n", __FILE__);                   \
-    fwprintf(stderr,          L"#    func: %s\n" RESET, __PRETTY_FUNCTION__);  \
-    abort();                                                                   \
-  }
+#define ASSERT(expr) my_assert(expr, #expr, __FILE__, __PRETTY_FUNCTION__);
 #else
 #define ASSERT(expr) ;
 #endif // ASSERT_ON
+
+void my_assert(bool expr, const char* expr_str, const char* file, const char* func);
 
 #endif // LIB_MYASSERT_H_

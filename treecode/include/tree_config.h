@@ -3,8 +3,6 @@
 
 #include "../../libcode/include/my_string.h"
 
-// typedef int Elem;
-
 enum class TypeOfElem {
   kObject   = 0,
   kProperty = 1,

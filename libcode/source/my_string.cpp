@@ -1,4 +1,5 @@
 #include "../include/my_string.h"
+#include <cstddef>
 
 //public-----------------------------------------------------------------------
 
@@ -7,6 +8,23 @@ StringError String::Ctor(const wchar_t* origin, const size_t min_alloc) {
 
   size_ = wcslen(origin) + 1; // \0 included
   cap_ = MAX(size_ * kStrMultiplier, min_alloc);
+
+  data_ = (wchar_t*)calloc(cap_, sizeof(wchar_t));
+  if (data_ == nullptr) { return StringError::kCantAlloc; }
+
+  memcpy(data_, origin, size_);
+
+  return StringError::kSuccess;
+}
+
+StringError String::Ctor(const size_t len,
+                         const wchar_t* origin,
+                         const size_t min_alloc) {
+  ASSERT(origin != nullptr);
+
+  size_ = len;
+  cap_ = MAX(size_ * kStrMultiplier, min_alloc);
+
 
   data_ = (wchar_t*)calloc(cap_, sizeof(wchar_t));
   if (data_ == nullptr) { return StringError::kCantAlloc; }
@@ -25,7 +43,7 @@ void String::Dtor() {
 }
 
 bool String::IsEmpty() {
-  return !(Size());
+  return !((bool)Size());
 }
 
 size_t String::Size() {
@@ -104,6 +122,12 @@ StringError String::Append(const wchar_t* add_str) {
   return Append(wcslen(add_str), add_str);
 }
 
+StringError String::Append(StringView* add_str) {
+  ASSERT(add_str != nullptr);
+
+  return Append(add_str->Size(), add_str->Data());
+}
+
 StringError String::PushBack(wchar_t ch) {
   StringError error = Reserve(size_ + 1);
   if (error != StringError::kSuccess) { return error; }
@@ -139,6 +163,13 @@ StringError String::Assign(const wchar_t* str) {
   return Ctor(str);
 }
 
+StringError String::Assign(StringView* str) {
+  ASSERT(str != nullptr);
+
+  Dtor();
+  return Ctor(str->Data(), str->Length());
+}
+
 void StringView::Ctor(const wchar_t* origin = L"") {
   data_ = origin;
   size_ = wcslen(origin) + 1; //with \0
@@ -155,7 +186,7 @@ void StringView::Dtor() {
 }
 
 bool StringView::IsEmpty() {
-  return !(Size());
+  return !((bool)Size());
 }
 
 size_t StringView::Size() {
