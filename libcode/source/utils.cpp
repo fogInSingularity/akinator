@@ -4,7 +4,8 @@ void SwapBytes(void* a, void* b, size_t size) {
   ASSERT(a != nullptr);
   ASSERT(b != nullptr);
 
-  if (a == b) { return; } //REVIEW
+
+  if (a == b) [[unlikely]] { return; }
 
   size_t nFullOps = size >> 3; // колво шагов по 8
   size_t trailer = size & 0b111UL; // оставшиеся 7 байт

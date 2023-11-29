@@ -4,13 +4,15 @@
 #include <stdio.h>
 #include <wchar.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "lib_config.h"
 
 #include "color.h"
 
 #ifdef ASSERT_ON
-#define ASSERT(expr) my_assert(expr, #expr, __FILE__, __PRETTY_FUNCTION__);
+// #define ASSERT(expr) my_assert(expr, #expr, __FILE__, __PRETTY_FUNCTION__);
+#define ASSERT(expr) assert(expr);
 #else
 #define ASSERT(expr) ;
 #endif // ASSERT_ON

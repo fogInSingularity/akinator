@@ -4,8 +4,9 @@
 #include "../../libcode/include/my_string.h"
 
 enum class TypeOfElem {
-  kObject   = 0,
-  kProperty = 1,
+  kUninitType = 0,
+  kObject     = 1,
+  kProperty   = 2,
 };
 
 struct Elem {

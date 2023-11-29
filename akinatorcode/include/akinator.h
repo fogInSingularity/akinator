@@ -27,6 +27,7 @@ enum class AkinatorError {
   kInvalidDataBase = 4,
   kStackError      = 5,
   kStringError     = 6,
+  kDBStoreFailure  = 7,
 };
 
 struct Akinator {
@@ -39,6 +40,8 @@ struct Akinator {
  private:
   AkinatorError LoadDB();
   AkinatorError StoreDB();
+  AkinatorError LoadStrFromFile(FILE* file);
+  AkinatorError StoreStrToFile(FILE* file);
   AkinatorError GuessMode();
   AkinatorError DefineMode();
   AkinatorError CompareMode();
@@ -52,5 +55,8 @@ struct Akinator {
 };
 
 Mode GetMode();
+
+void ObjDtor(Elem* data);
+int ObjFind(const void* a, const void* b);
 
 #endif // AKINATOR_H_

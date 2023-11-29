@@ -1,6 +1,4 @@
 #include "../include/akinator.h"
-#include <cstdio>
-#include <cwchar>
 
 //static-----------------------------------------------------------------------
 
@@ -8,7 +6,6 @@ static size_t DropBuffer(FILE* file);
 static void SayToUser(const wchar_t* msg);
 static void ErrorMessage(const wchar_t* msg);
 static bool GetLine(String* str);
-static int Compare (const void* a, const void* b);
 
 //global-----------------------------------------------------------------------
 
@@ -54,7 +51,7 @@ AkinatorError Akinator::Start(int argc, const char** argv) {
   if (argc < 2) { return AkinatorError::kNotEnoughFiles; }
   db_file_name_ = argv[1];
 
-  data_base_.Ctor(Compare);
+  data_base_.Ctor();
 
   StringError str_error = StringError::kSuccess;
   str_error = raw_data_base_.Ctor();
@@ -66,12 +63,10 @@ AkinatorError Akinator::Start(int argc, const char** argv) {
   if (db_file == nullptr) { return AkinatorError::kCantOpenFile; }
 
   AkinatorError error = AkinatorError::kSuccess;
-
   error = LoadDB();
-
-  data_base_.DotDump();
-
   if (error != AkinatorError::kSuccess) { return error; }
+
+  data_base_.DotDump(); // NOTE
 
   return AkinatorError::kSuccess;
 }
@@ -79,13 +74,11 @@ AkinatorError Akinator::Start(int argc, const char** argv) {
 void Akinator::End() {
   db_file_name_ = nullptr;
 
-  db_file_name_ = nullptr;
   raw_data_base_.Dtor();
-  data_base_.Dtor();
+  data_base_.Dtor(&ObjDtor);
 }
 
 void Akinator::ThrowError(AkinatorError error) {
-  // fwprintf(stderr, L"%d", error);
   switch (error) {
     case AkinatorError::kSuccess:
       //---//
@@ -107,6 +100,9 @@ void Akinator::ThrowError(AkinatorError error) {
       break;
     case AkinatorError::kStringError:
       ErrorMessage(L"string error");
+      break;
+    case AkinatorError::kDBStoreFailure:
+      ErrorMessage(L"cant store data base");
       break;
     default:
       ASSERT(0 && "UNKNOWN ERROR CODE");
@@ -150,51 +146,93 @@ AkinatorError Akinator::LoadDB() {
   FILE* db_file = fopen(db_file_name_, "r");
   if (db_file == nullptr) { return AkinatorError::kCantOpenFile; }
 
-  wint_t ch = L'\0';
-  StringError str_error = StringError::kSuccess;
-  while ((ch = getwc(db_file)) != WEOF) {
-    str_error = raw_data_base_.PushBack((wchar_t)ch);
+  AkinatorError error = AkinatorError::kSuccess;
+  error = LoadStrFromFile(db_file);
+  if (error != AkinatorError::kSuccess) { return error; }
 
-    if (str_error != StringError::kSuccess) {
-      fclose(db_file);
-      return AkinatorError::kCantAllocDB;
-    }
+  TreeError tree_error = TreeError::kSuccess;
+  tree_error = data_base_.LoadFromStr(&raw_data_base_);
+  if (tree_error != TreeError::kSuccess) {
+    return AkinatorError::kStringError;
   }
-  
-  data_base_.LoadFromStr(&raw_data_base_);
 
   fclose(db_file);
   return AkinatorError::kSuccess;
 }
 
-AkinatorError Akinator::StoreDB() { //FIXME
-  // FILE* db_file = fopen(db_file_name_, "w");
-  // if (db_file == nullptr) { return AkinatorError::kCantOpenFile; }
+AkinatorError Akinator::StoreDB() {
+  FILE* db_file = fopen(db_file_name_, "w");
+  if (db_file == nullptr) { return AkinatorError::kCantOpenFile; }
 
-  // wprintf(L"%ls", raw_data_base_.Data());
+  TreeError tree_error = TreeError::kSuccess;
+  tree_error = data_base_.LoadToStr(&raw_data_base_);
+  if (tree_error != TreeError::kSuccess) {
+    return AkinatorError::kStringError;
+  }
+
+  AkinatorError error = AkinatorError::kSuccess;
+  error = StoreStrToFile(db_file);
+  if (error != AkinatorError::kSuccess) { return error; }
+
+  fclose(db_file);
+  return AkinatorError::kSuccess;
+}
+
+AkinatorError Akinator::LoadStrFromFile(FILE* file) {
+  ASSERT(file != nullptr);
+
+  wint_t ch = L'\0';
+  StringError str_error = StringError::kSuccess;
+  while ((ch = getwc(file)) != WEOF) {
+    str_error = raw_data_base_.PushBack((wchar_t)ch);
+
+    if (str_error != StringError::kSuccess) {
+      return AkinatorError::kCantAllocDB;
+    }
+  }
 
   return AkinatorError::kSuccess;
 }
 
-AkinatorError Akinator::GuessMode() {
+AkinatorError Akinator::StoreStrToFile(FILE* file) {
+  ASSERT(file != nullptr);
+
+  wint_t ch = L'\0';
+  wchar_t* ch_ptr = nullptr;
+  for (Index i = 0; i < raw_data_base_.Size(); i++) {
+    ch_ptr = raw_data_base_.At(i);
+    if (ch_ptr == nullptr) { return AkinatorError::kDBStoreFailure; }
+
+    ch = fputwc(*ch_ptr, file);
+    if (ch == WEOF) { return AkinatorError::kDBStoreFailure; }
+  }
+
+  return AkinatorError::kSuccess;
+}
+
+AkinatorError Akinator::GuessMode() { //FIXME
   return AkinatorError::kSuccess;
 }
 
 AkinatorError Akinator::DefineMode() {
+  StringError str_error = StringError::kSuccess;
+
   Elem item = {};
-  item.str.Ctor();
+  str_error = item.str.Ctor();
+  if (str_error != StringError::kSuccess) { return AkinatorError::kStringError; }
   item.type = TypeOfElem::kObject;
 
+  SayToUser(L"определение кого вы хотите узнать?:\n");
   bool get_error = GetLine(&item.str);
   if (!get_error) {
     item.str.Dtor();
     return AkinatorError::kStringError;
   }
 
-  const TreeNode* node = data_base_.Find(&item);
+  const TreeNode* node = data_base_.Find(&item, &ObjFind);
   if (node == nullptr) {
     item.str.Dtor();
-    SayToUser(L"такого объекта нет");
+    SayToUser(L"такого объекта нет\n");
     return AkinatorError::kSuccess;
   }
 
@@ -213,9 +251,8 @@ AkinatorError Akinator::DefineMode() {
     iter_node = iter_node->parent;
   }
 
-  //принтануть всю инфу со стека
   SayToUser(item.str.Data());
-  SayToUser(L"имеет свосва:\n");
+  SayToUser(L" имеет свойсва:\n");
   Elem prop = {};
   while (def_stk.size != 0) {
     stk_error = StackPop(&def_stk, &prop);
@@ -225,23 +262,24 @@ AkinatorError Akinator::DefineMode() {
   }
 
   item.str.Dtor();
+  StackDtor(&def_stk);
 
   return AkinatorError::kSuccess;
 }
 
-AkinatorError Akinator::CompareMode() {
+AkinatorError Akinator::CompareMode() { //FIXME
   return AkinatorError::kSuccess;
 }
 
-AkinatorError Akinator::ShowTreeMode() {
+AkinatorError Akinator::ShowTreeMode() { //FIXME
   return AkinatorError::kSuccess;
 }
 
-AkinatorError Akinator::QuitAndSaveMode() {
+AkinatorError Akinator::QuitAndSaveMode() { //FIXME
   return AkinatorError::kSuccess;
 }
 
-AkinatorError Akinator::QuitWithoutMode() {
+AkinatorError Akinator::QuitWithoutMode() { //FIXME
   return AkinatorError::kSuccess;
 }
 
@@ -283,8 +321,19 @@ static void ErrorMessage(const wchar_t* msg) {
   fwprintf(stderr, RED BOLD L"error: " RESET L"%ls\n", msg);
 }
 
-static int Compare (const void* a, const void* b) { //FIXME
-  (void)a;
-  (void)b;
-  return 0;
+//btree functions--------------------------------------------------------------
+
+void ObjDtor(Elem* data) {
+  ASSERT(data != nullptr);
+
+  data->str.Dtor();
+  data->type = TypeOfElem::kUninitType;
+}
+
+int ObjFind(const void* a, const void* b) {
+  const Elem* node_data = (const Elem*)a;
+  const Elem* given_data = (const Elem*)b;
+
+  if (node_data->type != TypeOfElem::kObject) { return 1; }
+  return wcscmp(node_data->str.Data(), given_data->str.Data());
 }

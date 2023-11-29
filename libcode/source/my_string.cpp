@@ -1,5 +1,4 @@
 #include "../include/my_string.h"
-#include <cstddef>
 
 //public-----------------------------------------------------------------------
 
@@ -12,7 +11,7 @@ StringError String::Ctor(const wchar_t* origin, const size_t min_alloc) {
   data_ = (wchar_t*)calloc(cap_, sizeof(wchar_t));
   if (data_ == nullptr) { return StringError::kCantAlloc; }
 
-  memcpy(data_, origin, size_);
+  memcpy(data_, origin, (size_ - 1)* sizeof(wchar_t));
 
   return StringError::kSuccess;
 }
@@ -22,14 +21,14 @@ StringError String::Ctor(const size_t len,
                          const size_t min_alloc) {
   ASSERT(origin != nullptr);
 
-  size_ = len;
+  size_ = len + 1;
   cap_ = MAX(size_ * kStrMultiplier, min_alloc);
 
 
   data_ = (wchar_t*)calloc(cap_, sizeof(wchar_t));
   if (data_ == nullptr) { return StringError::kCantAlloc; }
 
-  memcpy(data_, origin, size_);
+  memcpy(data_, origin, (size_ - 1)* sizeof(wchar_t));
 
   return StringError::kSuccess;
 }
@@ -42,19 +41,27 @@ void String::Dtor() {
   cap_  = 0;
 }
 
-bool String::IsEmpty() {
+void String::Dump() const {
+  fwprintf(stderr, L"###string dump start##################\n");
+  fwprintf(stderr, L"# data { %p: %ls }\n", data_, data_);
+  fwprintf(stderr, L"# size { %llu }\n", size_);
+  fwprintf(stderr, L"# cap { %llu }\n", cap_);
+  fwprintf(stderr, L"###string dump end####################\n");
+}
+
+bool String::IsEmpty() const {
   return !((bool)Size());
 }
 
-size_t String::Size() {
+size_t String::Size() const {
   return size_ - 1;
 }
 
-size_t String::Length() {
+size_t String::Length() const {
   return Size();
 }
 
-size_t String::Capacity() {
+size_t String::Capacity() const {
   return cap_ - 1;
 }
 
@@ -101,11 +108,11 @@ wchar_t* String::At(Index ind) {
   return data_ + ind;
 }
 
-const wchar_t* String::CStr() {
+const wchar_t* String::CStr() const {
   return Data();
 }
 
-const wchar_t* String::Data() {
+const wchar_t* String::Data() const {
   return data_;
 }
 

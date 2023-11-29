@@ -19,6 +19,7 @@ enum class TreeError {
   kStringError      = 3,
   kInvalidTree      = 4,
   kBadFileAccess    = 5,
+  kBadInsertion     = 6,
 };
 
 struct TreeNode {
@@ -28,18 +29,29 @@ struct TreeNode {
   TreeNode* parent;
 };
 
+// enum class FindRes {
+//   kExitFind  = 0,
+//   kRightNode = 1,
+//   kLeftNode  = 2,
+//   kFound     = 3,
+// };
+
 typedef void ActionFunc(TreeNode* node);
+typedef void ElemDtorFunc(Elem* data);
+typedef CompareFunc FindCondFunc;
+typedef CompareFunc InsertCondFunc;
 
 struct BTree {
  public: //--------------------------------------------------------------------
-  void Ctor(CompareFunc* cmp);
-  void Dtor();
+  void Ctor();
+  void Dtor(ElemDtorFunc* ElemD);
   TreeError DotDump();
 
-  TreeError Insert(Elem* elem);
-  const TreeNode* Find(Elem* item);
-  TreeError Traversal(ActionFunc* Action);
+  TreeError Insert(Elem* elem, InsertCondFunc* Insrt);
+  const TreeNode* Find(Elem* item, FindCondFunc* Fnd);
+  TreeError Traversal(ActionFunc* Act);
   bool IsRoot(const TreeNode* node);
+
   TreeError LoadToStr(String* str);
   TreeError LoadFromStr(String* str);
  private: //-------------------------------------------------------------------
@@ -49,13 +61,19 @@ struct BTree {
 
   TreeError InsertNode(TreeNode* node, Elem* elem);
   const TreeNode* FindNode(TreeNode* node, Elem* item);
-  TreeError NodeTraversal(TreeNode* node, ActionFunc* Action);
+  TreeError NodeTraversal(TreeNode* node);
+
   TreeError LoadNodeToStr(String* str, TreeNode* node);
-  TreeError LoadNodeFromStr(const wchar_t* str, TreeNode** node, TreeNode* parent);
+  StringError PushNodeToStr(String* str, TreeNode* node);
+  TreeNode* LoadNodeFromStr(const wchar_t* str, Counter* shift, TreeNode* parent);
   bool IsValid(String* raw_tree);
 
-  CompareFunc* compare_;
-  // ActionFunc action;
+  // CompareFunc* compare_;
+  InsertCondFunc* InsertCond_;
+  FindCondFunc* FindCond_; // == 0 means that it is correct obj
+  ActionFunc* Action_;
+  ElemDtorFunc* ElemDtor_;
+
   TreeNode* root_;
 };
 

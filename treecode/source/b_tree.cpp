@@ -1,4 +1,6 @@
 #include "../include/b_tree.h"
+#include <cstddef>
+#include <endian.h>
 
 //static-----------------------------------------------------------------------
 
@@ -8,20 +10,28 @@ static const wchar_t* SkipSpaces(const wchar_t* move);
 
 //public-----------------------------------------------------------------------
 
-void BTree::Ctor(CompareFunc* cmp) {
-  ASSERT(cmp != nullptr);
+void BTree::Ctor() {
+  InsertCond_ = nullptr;
+  FindCond_ = nullptr;
+  Action_ = nullptr;
 
-  compare_ = cmp;
   root_ = nullptr;
 }
 
-void BTree::Dtor() {
-  if (root_ != nullptr) {
-    DtorNode(root_);
-  }
+void BTree::Dtor(ElemDtorFunc* ElemD) {
+  ASSERT(ElemD != nullptr);
+
+  ElemDtor_ = ElemD;
+  DtorNode(root_);
+  root_ = nullptr;
+  ElemDtor_ = nullptr;
+
+  Action_ = nullptr;
+  FindCond_ = nullptr;
+  InsertCond_ = nullptr;
 }
 
-TreeError BTree::DotDump() {
+TreeError BTree::DotDump() { //FIXME dump func
   FILE* dot_file = fopen(kDotName, "w");
   if (dot_file == nullptr) { return TreeError::kBadFileAccess; }
 
@@ -34,8 +44,11 @@ TreeError BTree::DotDump() {
   return TreeError::kSuccess;
 }
 
-TreeError BTree::Insert(Elem* elem) {
+TreeError BTree::Insert(Elem* elem, InsertCondFunc* Insrt) {
   ASSERT(elem != nullptr);
+  ASSERT(Insrt != nullptr);
+
+  InsertCond_ = Insrt;
 
   if (root_ == nullptr) {
     root_ = CtorNode(root_, elem);
@@ -44,19 +57,37 @@ TreeError BTree::Insert(Elem* elem) {
     return InsertNode(root_, elem);
   }
 
+  InsertCond_ = nullptr;
+
   return TreeError::kSuccess;
 }
 
-const TreeNode* BTree::Find(Elem* item) {
+const TreeNode* BTree::Find(Elem* item, FindCondFunc* Fnd) {
   ASSERT(item != nullptr);
+  ASSERT(Fnd != nullptr);
 
-  return FindNode(root_, item);
+  FindCond_ = Fnd;
+
+  const TreeNode* node = FindNode(root_, item);
+
+  FindCond_ = nullptr;
+
+  return node;
 }
 
-TreeError BTree::Traversal(ActionFunc* Action) {
-  ASSERT(Action != nullptr);
+TreeError BTree::Traversal(ActionFunc* Act) {
+  ASSERT(Act != nullptr);
 
-  return NodeTraversal(root_, Action);
+  Action_ = Act;
+
+  TreeError tree_error = TreeError::kSuccess;
+
+  tree_error = NodeTraversal(root_);
+  if (tree_error != TreeError::kSuccess) { return tree_error; }
+
+  Action_ = nullptr;
+
+  return TreeError::kSuccess;
 }
 
 bool BTree::IsRoot(const TreeNode* node) {
@@ -65,25 +96,31 @@ bool BTree::IsRoot(const TreeNode* node) {
   return (node == root_);
 }
 
-TreeError BTree::LoadToStr(String* str) {
+TreeError BTree::LoadToStr(String* str) {//cringe
   ASSERT(str != nullptr);
 
   return LoadNodeToStr(str, root_);
 }
 
-TreeError BTree::LoadFromStr(String* str) {
+TreeError BTree::LoadFromStr(String* str) {//cringe?
   ASSERT(str != nullptr)
 
   if (!IsValid(str)) { return TreeError::kInvalidTree; }
 
-  return LoadNodeFromStr(str->Data(), &root_, root_);
+  if (root_ != nullptr) { return TreeError::kInvalidTree; }
+
+  Counter shift = 0;
+  root_ = LoadNodeFromStr(str->Data(), &shift, nullptr);
+  if (root_ == nullptr) { return TreeError::kInvalidTree; }
+
+  return TreeError::kSuccess;
 }
 
 //private----------------------------------------------------------------------
 
 TreeNode* BTree::CtorNode(TreeNode* parent, Elem* elem) {
-  // ASSERT(parent != nullptr);
   ASSERT(elem != nullptr);
+  // parent node can be nullptr
 
   TreeNode* new_node = (TreeNode*)calloc(1, sizeof(TreeNode));
   if (new_node == nullptr) { return nullptr; }
@@ -97,58 +134,69 @@ TreeNode* BTree::CtorNode(TreeNode* parent, Elem* elem) {
 }
 
 void BTree::DtorNode(TreeNode* node) {
+  ASSERT(ElemDtor_ != nullptr);
+
   if (node == nullptr) { return; }
 
   DtorNode(node->l_child);
   DtorNode(node->r_child);
 
+  ElemDtor_(&node->data);
   free(node);
+  node = nullptr;
 }
 
-void BTree::NodeDotDump(FILE* file, TreeNode* node) {
+void BTree::NodeDotDump(FILE* file, TreeNode* node) { //FIXME dump func
+  ASSERT(file != nullptr);
+
   if (node == nullptr) { return; }
 
   if (node->l_child != nullptr) {
-    fprintf(file, "node%lu->node%lu\n", node, node->l_child);
+    fprintf(file, "node%lu->node%lu\n", (size_t)node, (size_t)node->l_child);
   }
   if (node->r_child != nullptr) {
-    fprintf(file, "node%lu->node%lu\n", node, node->r_child);
+    fprintf(file, "node%lu->node%lu\n", (size_t)node, (size_t)node->r_child);
   }
 
   NodeDotDump(file, node->l_child);
   NodeDotDump(file, node->r_child);
-  fprintf(file, "node%lu->node%lu\n", node->parent, node);
 }
 
 TreeError BTree::InsertNode(TreeNode* node, Elem* elem) {
   ASSERT(node != nullptr);
   ASSERT(elem != nullptr);
+  ASSERT(InsertCond_ != nullptr);
 
-  if (compare_(node, elem) > 0) { //TODO
+  int ins_res = InsertCond_(node, elem);
+
+  if (ins_res > 0) {
     if (node->r_child != nullptr) {
       return InsertNode(node->r_child, elem);
     }
 
     node->r_child = CtorNode(node->r_child, elem);
     if (node->r_child == nullptr) { return TreeError::kNodeCtorBadAlloc; }
-  } else {
+  } else if (ins_res < 0) {
     if (node->l_child != nullptr) {
       return InsertNode(node->l_child, elem);
     }
 
     node->l_child = CtorNode(node->l_child, elem);
     if (node->l_child == nullptr) { return TreeError::kNodeCtorBadAlloc; }
+  } else {
+    return TreeError::kBadInsertion;
   }
 
   return TreeError::kSuccess;
 }
 
 const TreeNode* BTree::FindNode(TreeNode* node, Elem* item) {
-  ASSERT(node != nullptr);
   ASSERT(item != nullptr);
+  ASSERT(FindCond_ != nullptr);
 
-  if (item == nullptr) { return nullptr; }
-  if (compare_(&node->data, item) == 0) { return node; }
+  if (node == nullptr) { return nullptr; }
+
+  if (FindCond_(&node->data, item) == 0) { return node; }
 
   const TreeNode* left_search = FindNode(node->l_child, item);
   if ( left_search != nullptr) { return left_search; }
@@ -158,20 +206,19 @@ const TreeNode* BTree::FindNode(TreeNode* node, Elem* item) {
   return nullptr;
 }
 
-TreeError BTree::NodeTraversal(TreeNode* node, ActionFunc* Action) {
-  ASSERT(node != nullptr);
-  ASSERT(Action != nullptr);
+TreeError BTree::NodeTraversal(TreeNode* node) {
+  ASSERT(Action_ != nullptr);
 
-  Action(node);
+  Action_(node);
   if (node == nullptr) { return TreeError::kSuccess; }
 
-  NodeTraversal(node->l_child, Action);
-  NodeTraversal(node->r_child, Action);
+  NodeTraversal(node->l_child);
+  NodeTraversal(node->r_child);
 
   return TreeError::kSuccess;
 }
 
-TreeError BTree::LoadNodeToStr(String* str, TreeNode* node) {
+TreeError BTree::LoadNodeToStr(String* str, TreeNode* node) {//cringe
   ASSERT(str != nullptr);
   ASSERT(node != nullptr);
 
@@ -179,16 +226,11 @@ TreeError BTree::LoadNodeToStr(String* str, TreeNode* node) {
   TreeError tree_error = TreeError::kSuccess;
 
   if (node != nullptr) {
-    str_error = str->PushBack(L'(');
+    str_error = PushNodeToStr(str, node);
     if (str_error != StringError::kSuccess) { return TreeError::kStringError; }
-
-    str->PushBack(L'\"');
-    str->Append(node->data.str.Data());
-    str->PushBack(L'\"');
 
     tree_error = LoadNodeToStr(str, node->l_child);
     if (tree_error != TreeError::kSuccess) { return tree_error; }
-
     tree_error = LoadNodeToStr(str, node->r_child);
     if (tree_error != TreeError::kSuccess) { return tree_error; }
 
@@ -199,81 +241,73 @@ TreeError BTree::LoadNodeToStr(String* str, TreeNode* node) {
     if (str_error != StringError::kSuccess) { return TreeError::kStringError; }
   }
 
-  return  TreeError::kSuccess;
-}
-
-  // ASSERT(str != nullptr);
-  // ASSERT(node != nullptr);
-
-  // str = SkipSpaces(str);
-  // if (*str != L'(') { return TreeError::kInvalidTree; }
-
-  // str++;
-  // if (*str != L'\"') { return TreeError::kInvalidTree; }
-
-  // const wchar_t* left_quat = str;
-  // const wchar_t* right_quat = wcschr(str + 1, L'\"');
-
-  // Elem data = {};
-  // StringError str_error = StringError::kSuccess;
-  // str_error = data.str.Ctor(left_quat + 1, (size_t)(right_quat - left_quat - 1));
-  // if (str_error != StringError::kSuccess) { return TreeError::kInvalidTree; }
-
-  // str = right_quat + 1;
-  // str = SkipSpaces(str);
-
-  // //FIXME
-  // const wchar_t* left_bracket = wcschr(str, L'(');
-  // const wchar_t* right_bracket = wcschr(str, L')');
-  // const wchar_t* first_star    = wcschr(str, L'*');
-  // if (left_bracket > first_star) {
-  //   data.type = TypeOfElem::kObject;
-  //   TreeNode* new_node = CtorNode(*node, &data);
-  //   if (new_node == nullptr) { return TreeError::kNodeCtorBadAlloc; }
-
-  //   new_node->l_child = nullptr;
-  //   new_node->r_child = nullptr;
-  // } else {
-  //   data.type = TypeOfElem::kProperty;
-  //   TreeNode* new_node = CtorNode(*node, &data);
-  //   TreeError tree_error = TreeError::kSuccess;
-  //   tree_error = LoadNodeFromStr(left_bracket, &new_node->l_child);
-  //   if (tree_error != TreeError::kSuccess) { return tree_error; }
-
-  //   tree_error = LoadNodeFromStr(right_bracket + 1, &new_node->r_child);
-  //   if (tree_error != TreeError::kSuccess) { return tree_error; }
-  // }
-
-TreeError BTree::LoadNodeFromStr(const wchar_t* str, TreeNode** node, TreeNode* parent) {
-  if (*str == L'\0') { return TreeError::kSuccess; }
-
-  Elem data = {};
-  const wchar_t* left_quat = wcschr(str, L'\"');
-  const wchar_t* right_quat = wcschr(left_quat + 1, L'\"');
-
-  data.str.Ctor(right_quat - left_quat - 1, left_quat + 1);
-
-  if (*(right_quat + 1) == L'*') {
-    data.type = TypeOfElem::kObject;
-    TreeNode* new_node = CtorNode(parent, &data);
-  } else {
-    data.type = TypeOfElem::kProperty;
-    TreeNode* new_node = CtorNode(parent, &data);
-    LoadFromStr(right_quat + 1, &new_node->l_child, new_node);
-  }
-
-
-  // LoadNodeFromStr(str + 1, &new_node->l_child, new_node);
-  // LoadNodeFromStr(str + 1, &new_node->r_child, new_node);
-
-
-
-  *node = new_node;
-
   return TreeError::kSuccess;
 }
 
-bool BTree::IsValid(String* raw_tree) {
+StringError BTree::PushNodeToStr(String* str, TreeNode* node) {//cringe
+  ASSERT(str != nullptr);
+  ASSERT(node != nullptr);
+
+  StringError str_error = StringError::kSuccess;
+
+  str_error = str->Reserve(node->data.str.Length() + 4);
+  if (str_error != StringError::kSuccess) { return str_error; }
+
+  str_error = str->PushBack(L'(');
+  if (str_error != StringError::kSuccess) { return str_error; }
+
+  str_error = str->PushBack(L'\"');
+  if (str_error != StringError::kSuccess) { return str_error; }
+
+  str_error = str->Append(node->data.str.Data());
+  if (str_error != StringError::kSuccess) { return str_error; }
+
+  str_error = str->PushBack(L'\"');
+  if (str_error != StringError::kSuccess) { return str_error; }
+
+  return StringError::kSuccess;
+}
+
+TreeNode* BTree::LoadNodeFromStr(const wchar_t* str, Counter* shift, TreeNode* parent) {//cringe
+  ASSERT(str != nullptr);
+  ASSERT(shift != nullptr);
+  // parent can be nullptr
+
+  const wchar_t* left_quat = wcschr(str + *shift, L'\"');
+  const wchar_t* right_quat = wcschr(left_quat + 1, L'\"');
+  *shift += right_quat - (str + *shift) + 1;
+
+  Elem data = {};
+  data.str.Ctor((size_t)(right_quat - left_quat - 1), left_quat + 1);
+
+  TreeNode* new_node = {};
+  if (*(str + *shift) == L'_') {
+    data.type = TypeOfElem::kObject;
+    new_node = CtorNode(parent, &data);
+    *shift += 3;
+    return new_node;
+  } else {
+    data.type = TypeOfElem::kProperty;
+    new_node = CtorNode(parent, &data);
+    if (new_node == nullptr) { return nullptr; }
+
+    new_node->l_child = LoadNodeFromStr(str, shift, new_node);
+    if (new_node->l_child == nullptr) {
+      DtorNode(new_node);
+      return nullptr;
+    }
+
+    new_node->r_child = LoadNodeFromStr(str, shift, new_node);
+    if (new_node->r_child == nullptr) {
+      DtorNode(new_node);
+      return nullptr;
+    }
+  }
+
+  return new_node;
+}
+
+bool BTree::IsValid(String* raw_tree) {//cringe mb valid func?
   ASSERT(raw_tree != nullptr);
 
   Counter brackets = 0;
@@ -297,7 +331,7 @@ bool BTree::IsValid(String* raw_tree) {
 }
 
 //static-----------------------------------------------------------------------
-
+__attribute__((__unused__))
 static const wchar_t* SkipSpaces(const wchar_t* move) {
   ASSERT(move != nullptr);
 

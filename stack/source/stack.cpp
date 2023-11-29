@@ -1,7 +1,7 @@
 #include "../include/stack.h"
 
 static const ssize_t MultiplyConst = 2;
-static const size_t Nullifier = 0xDEAD;
+static const Elem Nullifier = {};
 
 #ifdef _CANARY_PROT
 static const canary_t Canary = 0xDEADFA11;

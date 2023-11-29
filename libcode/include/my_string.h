@@ -54,11 +54,12 @@ struct String {
                    const wchar_t* origin = L"",
                    const size_t min_alloc = kStrMinAlloc);
   void Dtor();
+  void Dump() const;
 
-  bool IsEmpty();
-  size_t Size();
-  size_t Length();
-  size_t Capacity();
+  bool IsEmpty() const;
+  size_t Size() const;
+  size_t Length() const;
+  size_t Capacity() const;
 
   StringError Reserve(size_t new_cap);
   StringError Resize(size_t new_cap);
@@ -66,8 +67,8 @@ struct String {
   StringError Clear();
 
   wchar_t* At(Index ind);
-  const wchar_t* CStr();
-  const wchar_t* Data();
+  const wchar_t* CStr() const;
+  const wchar_t* Data() const;
 
   StringError Append(String* add_str);
   StringError Append(const wchar_t* add_str);

@@ -6,8 +6,8 @@ SOURCES = libcode/source/* treecode/source/* akinatorcode/source/* stack/source/
 EXE = akinator
 EXE_RELEASE = akinator_rel
 
-FLAGS = -fdiagnostics-generate-patch -fdiagnostics-path-format=inline-events  \
--Og -ggdb -std=c++17 -Wall -Wextra -Weffc++ -Waggressive-loop-optimizations   \
+FLAGS_GCC = -fdiagnostics-generate-patch -fdiagnostics-path-format=inline-events\
+-Og -ggdb -std=c++20 -Wall -Wextra -Weffc++ -Waggressive-loop-optimizations   \
 -Wc++14-compat -Wuseless-cast -Wmissing-declarations -Wcast-align -Wcast-qual \
 -Wchar-subscripts -Wconditionally-supported -Wconversion -Wctor-dtor-privacy  \
 -Wempty-body -Wfloat-equal -Wformat-nonliteral -Wformat-security              \
@@ -27,11 +27,13 @@ float-divide-by-zero,integer-divide-by-zero,leak,nonnull-attribute,null,$\
 object-size,return,returns-nonnull-attribute,shift,signed-integer-overflow,$\
 undefined,unreachable,vla-bound,vptr
 
-all:
-	@$(CC) main.cpp $(SOURCES) $(FLAGS) -o $(EXE)
+FLAGS_CLANG =
 
-# clang:
-# 	@clang main.cpp $(SOURCES) -Wall -Wextra -o $(EXE)
+all:
+	@$(CC) main.cpp $(SOURCES) $(FLAGS_GCC) -o $(EXE)
+
+clang:
+	@clang++ main.cpp $(SOURCES) -Wall -Wextra -o $(EXE)
 
 release:
 	@$(CC) main.cpp $(SOURCES) -O3 -march=native -std=c++23 -o $(EXE_RELEASE)
@@ -45,5 +47,10 @@ performance:
 portability:
 	@clang-tidy $(SOURCES) -checks=portability-*
 
+READ_FLAGS = readability-magic-numbers,readability-identifier-length,readability-implicit-bool-conversion,readability-convert-member-functions-to-static
+
 readablility:
-	@clang-tidy $(SOURCES) -checks=readability-*
+	@clang-tidy $(SOURCES) -checks=readability-$(READ_FLAGS)
+
+mkdot:
+	@dot dotdump.dot -Tsvg >out.svg
