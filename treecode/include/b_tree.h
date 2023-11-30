@@ -29,17 +29,17 @@ struct TreeNode {
   TreeNode* parent;
 };
 
-// enum class FindRes {
-//   kExitFind  = 0,
-//   kRightNode = 1,
-//   kLeftNode  = 2,
-//   kFound     = 3,
-// };
+enum class InsertRes {
+  kError         = 0,
+  kLeftNode      = 1,
+  kRightNode     = 2,
+  kStopInsertion = 3,
+};
 
 typedef void ActionFunc(TreeNode* node);
 typedef void ElemDtorFunc(Elem* data);
 typedef CompareFunc FindCondFunc;
-typedef CompareFunc InsertCondFunc;
+typedef InsertRes InsertCondFunc(TreeNode* node, Elem* elem);
 
 struct BTree {
  public: //--------------------------------------------------------------------

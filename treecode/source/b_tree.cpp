@@ -1,5 +1,6 @@
 #include "../include/b_tree.h"
 #include <cstddef>
+#include <cstdio>
 #include <endian.h>
 
 //static-----------------------------------------------------------------------
@@ -151,11 +152,10 @@ void BTree::NodeDotDump(FILE* file, TreeNode* node) { //FIXME dump func
 
   if (node == nullptr) { return; }
 
-  if (node->l_child != nullptr) {
-    fprintf(file, "node%lu->node%lu\n", (size_t)node, (size_t)node->l_child);
-  }
-  if (node->r_child != nullptr) {
-    fprintf(file, "node%lu->node%lu\n", (size_t)node, (size_t)node->r_child);
+  if (node->parent != nullptr) {
+    fprintf(file, "node%lu->node%lu\n", (size_t)node->parent, (size_t)node);
+    // fprintf(stderr, "node%lu: %ls\n", (size_t)node, node->data.str.Data());//NOTE
+    // fprintf(stderr, "node_parent%lu: %ls\n", (size_t)node->parent, node->parent->data.str.Data());
   }
 
   NodeDotDump(file, node->l_child);
@@ -167,24 +167,34 @@ TreeError BTree::InsertNode(TreeNode* node, Elem* elem) {
   ASSERT(elem != nullptr);
   ASSERT(InsertCond_ != nullptr);
 
-  int ins_res = InsertCond_(node, elem);
+  InsertRes ins_res = InsertCond_(node, elem);
 
-  if (ins_res > 0) {
-    if (node->r_child != nullptr) {
-      return InsertNode(node->r_child, elem);
-    }
+  switch (ins_res) {
+    case (InsertRes::kError):
+      return TreeError::kBadInsertion;
+      break;
+    case (InsertRes::kLeftNode):
+      if (node->l_child != nullptr) {
+        return InsertNode(node->l_child, elem);
+      }
 
-    node->r_child = CtorNode(node->r_child, elem);
-    if (node->r_child == nullptr) { return TreeError::kNodeCtorBadAlloc; }
-  } else if (ins_res < 0) {
-    if (node->l_child != nullptr) {
-      return InsertNode(node->l_child, elem);
-    }
+      node->l_child = CtorNode(node->l_child, elem);
+      if (node->l_child == nullptr) { return TreeError::kNodeCtorBadAlloc; }
+      break;
+    case (InsertRes::kRightNode):
+      if (node->r_child != nullptr) {
+        return InsertNode(node->r_child, elem);
+      }
 
-    node->l_child = CtorNode(node->l_child, elem);
-    if (node->l_child == nullptr) { return TreeError::kNodeCtorBadAlloc; }
-  } else {
-    return TreeError::kBadInsertion;
+      node->r_child = CtorNode(node->r_child, elem);
+      if (node->r_child == nullptr) { return TreeError::kNodeCtorBadAlloc; }
+      break;
+    case (InsertRes::kStopInsertion):
+      return TreeError::kSuccess;
+      break;
+    default:
+      ASSERT(0 && "UNKNOWN INSERT RESULT");
+      break;
   }
 
   return TreeError::kSuccess;

@@ -2,7 +2,7 @@
 
 #include "akinatorcode/include/akinator.h"
 
-int main(int argc, const char** argv) {
+int main(const int argc, const char** argv) {
   setlocale(LC_ALL, "ru_RU.UTF8");
 
   AkinatorError error = AkinatorError::kSuccess;

@@ -20,14 +20,15 @@ enum class Mode {
 };
 
 enum class AkinatorError {
-  kSuccess         = 0,
-  kNotEnoughFiles  = 1,
-  kCantOpenFile    = 2,
-  kCantAllocDB     = 3,
-  kInvalidDataBase = 4,
-  kStackError      = 5,
-  kStringError     = 6,
-  kDBStoreFailure  = 7,
+  kSuccess          = 0,
+  kNotEnoughFiles   = 1,
+  kCantOpenFile     = 2,
+  kCantAllocDB      = 3,
+  kInvalidDataBase  = 4,
+  kStackError       = 5,
+  kStringError      = 6,
+  kDBStoreFailure   = 7,
+  kBadTreeInsertion = 8,
 };
 
 struct Akinator {
@@ -57,6 +58,15 @@ struct Akinator {
 Mode GetMode();
 
 void ObjDtor(Elem* data);
-int ObjFind(const void* a, const void* b);
+int DefFind(const void* a, const void* b);
+InsertRes GuessIns(TreeNode* node, Elem* elem);
+InsertRes GuessObj(TreeNode* node, bool is_yes);
+TreeNode* GuessNodeCtor(TreeNode* parent, Elem* elem);
+void GuessNodeDtor(TreeNode* node);
+InsertRes GuessProp(TreeNode* node, bool is_yes);
+void SetTypesOfEl(TreeNode* node);
+void SetParentNode(TreeNode* parent_node,
+                   TreeNode* new_child_node,
+                   TreeNode* old_child_node);
 
 #endif // AKINATOR_H_

@@ -36,7 +36,7 @@ clang:
 	@clang++ main.cpp $(SOURCES) -Wall -Wextra -o $(EXE)
 
 release:
-	@$(CC) main.cpp $(SOURCES) -O3 -march=native -std=c++23 -o $(EXE_RELEASE)
+	@$(CC) main.cpp $(SOURCES) -O3 -s -march=native -std=c++23 -o $(EXE_RELEASE)
 
 analyze:
 	@clang-tidy $(SOURCES) -checks=clang-analyzer-*
