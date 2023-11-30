@@ -10,7 +10,8 @@ static bool GetLine(String* str);
 //global-----------------------------------------------------------------------
 
 Mode GetMode() {
-  SayToUser(L"что вы хотите: [о]тгадать, [д]ать определение,\n"
+  SayToUser(L"что вы хотите:\n"
+            L"[о]тгадать, [д]ать определение,\n"
             L"[с]равнить объекты, [п]оказать дерево,\n"
             L"[в]ыйти с сохранением или [б]ез него:\n");
 
@@ -66,9 +67,7 @@ AkinatorError Akinator::Start(int argc, const char** argv) {
   error = LoadDB();
   if (error != AkinatorError::kSuccess) { return error; }
 
-  data_base_.Traversal(&SetTypesOfEl); //NOTE
-
-  // data_base_.DotDump(); // NOTE
+  data_base_.Traversal(&SetTypesOfEl);
 
   return AkinatorError::kSuccess;
 }
@@ -77,7 +76,8 @@ void Akinator::End() {
   db_file_name_ = nullptr;
 
   raw_data_base_.Dtor();
-  data_base_.DotDump();
+
+  // data_base_.DotDump();
   data_base_.Dtor(&ObjDtor);
 }
 
@@ -216,17 +216,13 @@ AkinatorError Akinator::StoreStrToFile(FILE* file) {
   return AkinatorError::kSuccess;
 }
 
-AkinatorError Akinator::GuessMode() { //FIXME
-
-  // StringError str_error = StringError::kSuccess;
-  // str_error = item.str.Ctor(); //NOTE
-  // if (str_error != StringError::kSuccess) { return AkinatorError::kStringError; }
-  // item.type = TypeOfElem::kObject;
-
+AkinatorError Akinator::GuessMode() {
   Elem item = {};
   TreeError tree_error = TreeError::kSuccess;
   tree_error = data_base_.Insert(&item, &GuessIns);
-  if (tree_error != TreeError::kSuccess) { return AkinatorError::kBadTreeInsertion; }
+  if (tree_error != TreeError::kSuccess) {
+    return AkinatorError::kBadTreeInsertion;
+  }
 
   return AkinatorError::kSuccess;
 }
@@ -288,15 +284,28 @@ AkinatorError Akinator::CompareMode() { //FIXME
   return AkinatorError::kSuccess;
 }
 
-AkinatorError Akinator::ShowTreeMode() { //FIXME
+AkinatorError Akinator::ShowTreeMode() {
+  data_base_.DotDump();
+
   return AkinatorError::kSuccess;
 }
 
-AkinatorError Akinator::QuitAndSaveMode() { //FIXME
+AkinatorError Akinator::QuitAndSaveMode() {
+  TreeError tree_error = TreeError::kSuccess;
+  tree_error = data_base_.LoadToStr(&raw_data_base_);
+  // wprintf(L"%ls\n", raw_data_base_.Data());
+  if (tree_error != TreeError::kSuccess) {
+    return AkinatorError::kDBStoreFailure;
+  }
+
+  AkinatorError error = AkinatorError::kSuccess;
+  error = StoreDB();
+  if (error != AkinatorError::kSuccess) { return error; }
+
   return AkinatorError::kSuccess;
 }
 
-AkinatorError Akinator::QuitWithoutMode() { //FIXME
+AkinatorError Akinator::QuitWithoutMode() {
   return AkinatorError::kSuccess;
 }
 
@@ -395,7 +404,7 @@ InsertRes GuessIns(TreeNode* node, Elem* elem) {
     }
   }
 
-  ans.Dtor(); //NOTE
+  ans.Dtor();
   bool is_yes = !ans_yes;
   switch (node->data.type) {
     case TypeOfElem::kObject: {
@@ -515,9 +524,7 @@ InsertRes GuessProp(TreeNode* node, bool is_yes) {
 }
 
 void SetTypesOfEl(TreeNode* node) {
-  // $
   if (node == nullptr) { return; }
-  // $
   if ((node->l_child == nullptr) && (node->r_child == nullptr)) {
     node->data.type = TypeOfElem::kObject;
   } else {
@@ -538,6 +545,6 @@ void SetParentNode(TreeNode* parent_node,
   } else if (parent_node->l_child == old_child_node) {
     parent_node->l_child = new_child_node;
   } else {
-    ASSERT(0 && "WTF");
+    ASSERT(0 && "INVALID DATA BASE");
   }
 }

@@ -1,7 +1,4 @@
 #include "../include/b_tree.h"
-#include <cstddef>
-#include <cstdio>
-#include <endian.h>
 
 //static-----------------------------------------------------------------------
 
@@ -100,6 +97,10 @@ bool BTree::IsRoot(const TreeNode* node) {
 TreeError BTree::LoadToStr(String* str) {//cringe
   ASSERT(str != nullptr);
 
+  StringError str_error = StringError::kSuccess;
+  str_error = str->Clear();
+  if (str_error != StringError::kSuccess) { return TreeError::kBadLoad; }
+
   return LoadNodeToStr(str, root_);
 }
 
@@ -153,9 +154,8 @@ void BTree::NodeDotDump(FILE* file, TreeNode* node) { //FIXME dump func
   if (node == nullptr) { return; }
 
   if (node->parent != nullptr) {
-    fprintf(file, "node%lu->node%lu\n", (size_t)node->parent, (size_t)node);
-    // fprintf(stderr, "node%lu: %ls\n", (size_t)node, node->data.str.Data());//NOTE
-    // fprintf(stderr, "node_parent%lu: %ls\n", (size_t)node->parent, node->parent->data.str.Data());
+    fprintf(file, "node%lu->node%lu\n",
+            (size_t)node->parent, (size_t)node);
   }
 
   NodeDotDump(file, node->l_child);
@@ -228,9 +228,9 @@ TreeError BTree::NodeTraversal(TreeNode* node) {
   return TreeError::kSuccess;
 }
 
-TreeError BTree::LoadNodeToStr(String* str, TreeNode* node) {//cringe
+TreeError BTree::LoadNodeToStr(String* str, TreeNode* node) {//REVIEW
   ASSERT(str != nullptr);
-  ASSERT(node != nullptr);
+  // node can be nullptr
 
   StringError str_error = StringError::kSuccess;
   TreeError tree_error = TreeError::kSuccess;
@@ -254,7 +254,7 @@ TreeError BTree::LoadNodeToStr(String* str, TreeNode* node) {//cringe
   return TreeError::kSuccess;
 }
 
-StringError BTree::PushNodeToStr(String* str, TreeNode* node) {//cringe
+StringError BTree::PushNodeToStr(String* str, TreeNode* node) {//REVIEW
   ASSERT(str != nullptr);
   ASSERT(node != nullptr);
 
@@ -278,7 +278,9 @@ StringError BTree::PushNodeToStr(String* str, TreeNode* node) {//cringe
   return StringError::kSuccess;
 }
 
-TreeNode* BTree::LoadNodeFromStr(const wchar_t* str, Counter* shift, TreeNode* parent) {//cringe
+TreeNode* BTree::LoadNodeFromStr(const wchar_t* str,
+                                 Counter* shift,
+                                 TreeNode* parent) {//REVIEW
   ASSERT(str != nullptr);
   ASSERT(shift != nullptr);
   // parent can be nullptr
@@ -317,7 +319,7 @@ TreeNode* BTree::LoadNodeFromStr(const wchar_t* str, Counter* shift, TreeNode* p
   return new_node;
 }
 
-bool BTree::IsValid(String* raw_tree) {//cringe mb valid func?
+bool BTree::IsValid(String* raw_tree) {//REVIEW mb valid func?
   ASSERT(raw_tree != nullptr);
 
   Counter brackets = 0;
@@ -330,7 +332,7 @@ bool BTree::IsValid(String* raw_tree) {//cringe mb valid func?
   while (*str != L'\0') {
     brackets += (*str == L'(') - (*str == L')');
     quat     += (*str == L'\"');
-    star     += (*str == L'*');
+    star     += (*str == L'_');
 
     error    += (*str == L')') * (quat % 2);
 
@@ -341,6 +343,7 @@ bool BTree::IsValid(String* raw_tree) {//cringe mb valid func?
 }
 
 //static-----------------------------------------------------------------------
+
 __attribute__((__unused__))
 static const wchar_t* SkipSpaces(const wchar_t* move) {
   ASSERT(move != nullptr);

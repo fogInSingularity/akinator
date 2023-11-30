@@ -20,6 +20,7 @@ enum class TreeError {
   kInvalidTree      = 4,
   kBadFileAccess    = 5,
   kBadInsertion     = 6,
+  kBadLoad          = 7,
 };
 
 struct TreeNode {
@@ -65,10 +66,11 @@ struct BTree {
 
   TreeError LoadNodeToStr(String* str, TreeNode* node);
   StringError PushNodeToStr(String* str, TreeNode* node);
-  TreeNode* LoadNodeFromStr(const wchar_t* str, Counter* shift, TreeNode* parent);
+  TreeNode* LoadNodeFromStr(const wchar_t* str,
+                            Counter* shift,
+                            TreeNode* parent);
   bool IsValid(String* raw_tree);
 
-  // CompareFunc* compare_;
   InsertCondFunc* InsertCond_;
   FindCondFunc* FindCond_; // == 0 means that it is correct obj
   ActionFunc* Action_;

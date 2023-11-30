@@ -87,9 +87,14 @@ StackError StackPush(Stack* stk, Elem* value);
 
 StackError StackPop(Stack* stk, Elem* retValue);
 
-void StackDump(Stack* stk, StackError error, const char* file, size_t line, const char* func);
+void StackDump(Stack* stk,
+               StackError error,
+               const char* file,
+               size_t line,
+               const char* func);
 
-#define STACK_DUMP(stk, error) StackDump(stk, error, __FILE__, __LINE__, __func__);
+#define STACK_DUMP(stk, error)                                                \
+  StackDump(stk, error, __FILE__, __LINE__, __func__);
 
 #ifdef _DEBUG
   #define STACK_ASSERT(stk) \

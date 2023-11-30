@@ -10,11 +10,8 @@ static const canary_t Canary = 0xDEADFA11;
 //---------------------------------------------------------
 
 static StackError StackResizeUp(Stack* stk);
-
 static StackError StackResizeDown(Stack* stk);
-
 static StackError StackRecalloc(Stack* stk);
-
 static StackError StackOkData(Stack* stk);
 
 #ifdef _HASH_PROT
@@ -42,16 +39,22 @@ StackError StackCtor(Stack* stk, ssize_t initCap) {
 
   stk->size = 0;
   stk->capacity = (initCap < StandardAllocSize) ? StandardAllocSize : initCap;
-  stk->data = (Elem*)calloc(sizeof(Elem)*(size_t)stk->capacity ON_CANARY(+ 2*sizeof(canary_t)), sizeof(Elem));
+  stk->data = (Elem*)calloc(sizeof(Elem) * (size_t)stk->capacity
+                              ON_CANARY(+ 2*sizeof(canary_t)),
+                            sizeof(Elem));
 
-  FillBytes(AdrDataElem(stk, 0), &Nullifier, (size_t)stk->capacity, sizeof(Elem));
+  FillBytes(AdrDataElem(stk, 0),
+            &Nullifier,
+            (size_t)stk->capacity,
+            sizeof(Elem));
 
   if (stk->data == nullptr) {
     return error | StackState::ErrorCtor;
   }
 
 #ifdef _CANARY_PROT
-  memcpy(AdrLCanary(stk), &Canary, sizeof(canary_t)); // bytes misalligment fix
+  // bytes misalligment fix
+  memcpy(AdrLCanary(stk), &Canary, sizeof(canary_t));
   memcpy(AdrRCanary(stk), &Canary, sizeof(canary_t));
 #endif // _CANARY_PROT
 
@@ -155,7 +158,8 @@ StackError StackPop(Stack* stk, Elem* retValue) {
 
   --(stk->size);
   // *retValue = *AdrDataElem(stk, (stk->size));
-  memcpy(retValue, AdrDataElem(stk, (stk->size)), sizeof(Elem));
+  memcpy(retValue,
+         AdrDataElem(stk, (stk->size)), sizeof(Elem));
   // *AdrDataElem(stk, stk->size) = (Elem)Nullifier;
 
   error |= StackResizeDown(stk);
@@ -168,8 +172,14 @@ StackError StackPop(Stack* stk, Elem* retValue) {
   return error;
 }
 
-void StackDump(Stack* stk, StackError error, const char* file, size_t line, const char* func) {
+void StackDump(Stack* stk,
+               StackError error,
+               const char* file,
+               size_t line,
+               const char* func) {
   ASSERT(stk != nullptr);
+  ASSERT(file != nullptr);
+  ASSERT(func != nullptr);
 
   fprintf(stderr, "\n");
   fprintf(stderr, "#  Stack[ %p ] called from file %s(%lu) from function %s\n", stk, file, line, func);
@@ -248,7 +258,9 @@ static StackError StackRecalloc(Stack* stk) {
   StackError error = 0;
 
   Elem* holdPtr = stk->data;
-  stk->data = (Elem*)realloc(stk->data, (size_t)stk->capacity*sizeof(Elem) ON_CANARY(+ 2*sizeof(canary_t)));
+  stk->data = (Elem*)realloc(stk->data,
+                             (size_t)stk->capacity*sizeof(Elem)
+                               ON_CANARY(+ 2*sizeof(canary_t)));
 
   if (stk->data == nullptr) {
     stk->data = holdPtr;
@@ -258,7 +270,10 @@ static StackError StackRecalloc(Stack* stk) {
     return error;
   }
 
-  FillBytes(AdrDataElem(stk, stk->size), &Nullifier, (size_t)(stk->capacity - stk->size), sizeof(Elem));
+  FillBytes(AdrDataElem(stk, stk->size),
+            &Nullifier,
+            (size_t)(stk->capacity - stk->size),
+            sizeof(Elem));
 #ifdef _CANARY_PROT
   memcpy(AdrRCanary(stk), &Canary, sizeof(canary_t));
 #endif // _CANARY_PROT
@@ -287,7 +302,10 @@ static StackError StackOkData(Stack* stk) {
 #ifdef _HASH_PROT
   uint32_t hashOkdata = 0;
 
-  hashOkdata = Hash((const uint8_t*)stk->data, (size_t)stk->capacity*sizeof(Elem) ON_CANARY(+ 2*sizeof(canary_t)), 0);
+  hashOkdata = Hash((const uint8_t*)stk->data,
+                    (size_t)stk->capacity*sizeof(Elem)
+                      ON_CANARY(+ 2*sizeof(canary_t)),
+                    0);
 
   if (hashOkdata != stk->dataHash) {
     error |= StackState::ErrorDataHash;
@@ -307,7 +325,10 @@ static StackError StackHashUpdate(Stack* stk) {
   uint32_t holdHash = 0;
 
   stk->dataHash = 0;
-  holdHash = Hash((const uint8_t*)stk->data, sizeof(Elem)*(size_t)stk->capacity ON_CANARY(+ 2*sizeof(canary_t)), 0);
+  holdHash = Hash((const uint8_t*)stk->data,
+                  sizeof(Elem)*(size_t)stk->capacity
+                    ON_CANARY(+ 2*sizeof(canary_t)),
+                  0);
   stk->dataHash = holdHash;
 
   stk->stackHash = 0;
@@ -329,12 +350,14 @@ static canary_t* AdrLCanary(Stack* stk) {
 static canary_t* AdrRCanary(Stack* stk) {
   ASSERT(stk != nullptr);
 
-  return (canary_t*)((char*)stk->data + (size_t)stk->capacity*sizeof(Elem) + sizeof(canary_t));
+  return (canary_t*)((char*)stk->data
+         + (size_t)stk->capacity*sizeof(Elem) + sizeof(canary_t));
 }
 #endif // _CANARY_PROT
 
 static Elem* AdrDataElem(Stack* stk, ssize_t index) {
   ASSERT(stk != nullptr);
 
-  return (Elem*)((char*)stk->data + (size_t)index*sizeof(Elem) ON_CANARY(+ sizeof(canary_t)));
+  return (Elem*)((char*)stk->data
+         + (size_t)index*sizeof(Elem) ON_CANARY(+ sizeof(canary_t)));
 }
